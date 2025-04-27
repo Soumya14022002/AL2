@@ -1,0 +1,1006 @@
+[
+ {
+    "id": "MBSS-OS-RHEL-05",
+    "type": "Generic",
+    "description": "Ensure GPG keys are configured",
+    "command": "grep '^gpgcheck=' /etc/dnf/dnf.conf",
+    "expected_output": "gpgcheck=1",
+    "fix": "sed -i 's/^gpgcheck=.*/gpgcheck=1/' /etc/dnf/dnf.conf"
+},
+  {
+    "id": "MBSS-OS-RHEL-06",
+    "type": "Generic",
+    "description": "Ensure gpgcheck is globally activated",
+    "command": "grep -E '^gpgcheck=1' /etc/dnf/dnf.conf",
+    "expected_output": "gpgcheck=1",
+    "fix": "sed -i 's/^gpgcheck=0/gpgcheck=1/' /etc/dnf/dnf.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-07",
+    "type": "Generic",
+    "description": "Ensure repo_gpgcheck is globally activated",
+    "command": "grep -m1 '^repo_gpgcheck=' /etc/dnf/dnf.conf",
+    "expected_output": "repo_gpgcheck=1",
+    "fix": "sed -i 's/^repo_gpgcheck=.*/repo_gpgcheck=1/' /etc/dnf/dnf.conf"
+},
+  {
+    "id": "MBSS-OS-RHEL-08",
+    "type": "Generic",
+    "description": "Ensure updates, patches, and additional security software are installed",
+    "command": "sudo dnf check-update --security",
+    "expected_output": "No security updates needed",
+    "fix": "sudo dnf update --security -y"
+  },
+  {
+    "id": "MBSS-OS-RHEL-10",
+    "type": "Generic",
+    "description": "Ensure permissions on bootloader config are configured",
+    "command": "stat -c 'Access: %a/%A' /boot/grub2/grub.cfg",
+    "expected_output": "Access: 600/-rw-------",
+    "fix": "chmod 600 /boot/grub2/grub.cfg && chown root:root /boot/grub2/grub.cfg"
+  },
+  {
+    "id": "MBSS-OS-RHEL-11",
+    "type": "Generic",
+    "description": "Ensure address space layout randomization (ASLR) is enabled",
+    "command": "sysctl kernel.randomize_va_space",
+    "expected_output": "kernel.randomize_va_space = 2",
+    "fix": "printf '\\nkernel.randomize_va_space = 2\\n' | sudo tee -a /etc/sysctl.d/60-kernel_sysctl.conf && sudo sysctl -w kernel.randomize_va_space=2"
+  },
+  {
+    "id": "MBSS-OS-RHEL-12",
+    "type": "Generic",
+    "description": "Ensure SELinux is installed",
+    "command": "rpm -q libselinux",
+    "expected_output": "regex:^libselinux-.*",
+    "fix": "sudo dnf install -y libselinux"
+},
+  {
+    "id": "MBSS-OS-RHEL-13",
+    "type": "Generic",
+    "description": "Ensure SELinux is not disabled in bootloader configuration",
+    "command": "grubby --info=ALL | grep -E 'selinux=0|enforcing=0'",
+    "expected_output": "",
+    "fix": "sudo grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0' && sudo grub2-mkconfig -o $(grep -Prl -- '\\h*([^#\\n\\r]+\\h+)?kernelopts=([^#\\n\\r]+\\h+)?(selinux|enforcing)=0\\b' /boot/grub2 /boot/efi)"
+  },
+  {
+    "id": "MBSS-OS-RHEL-14",
+    "type": "Generic",
+    "description": "Ensure SELinux policy is configured",
+    "command": "grep '^SELINUXTYPE=' /etc/selinux/config",
+    "expected_output": "SELINUXTYPE=targeted",
+    "fix": "sudo sed -i 's/^SELINUXTYPE=.*/SELINUXTYPE=targeted/' /etc/selinux/config"
+  },
+    {
+        "id": "MBSS-OS-RHEL-15",
+        "type": "EitherOr",
+        "description": "Ensure the SELinux mode is not disabled",
+        "command": "getenforce",
+        "expected_output": "Enforcing || Permissive",
+        "fix": "sudo setenforce 1 && sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config"
+    },
+    {
+        "id": "MBSS-OS-RHEL-16",
+        "type": "Generic",
+        "description": "Ensure the SELinux mode is enforcing",
+        "command": "getenforce",
+        "expected_output": "Enforcing",
+        "fix": "sudo setenforce 1 && sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config"
+    },
+    {
+    "id": "MBSS-OS-RHEL-17",
+    "type": "Generic",
+    "description": "Ensure time synchronization is in use",
+    "command": "rpm -q chrony",
+    "expected_output": "regex:^chrony-.*",
+    "fix": "sudo dnf install -y chrony"
+    },
+     {
+        "id": "MBSS-OS-RHEL-19",
+        "type": "Generic",
+        "description": "Ensure chrony is not run as the root user",
+        "command": "grep -Po '^OPTIONS=\\K\".*?\"' /etc/sysconfig/chronyd | tr -d '\"'",
+        "expected_output": "-u chrony",
+        "fix": "sudo sed -i 's/^OPTIONS=.*/OPTIONS=\"-u chrony\"/' /etc/sysconfig/chronyd && sudo systemctl try-reload-or-restart chronyd.service"
+    },
+
+    {
+        "id": "MBSS-OS-RHEL-20",
+        "type": "Generic",
+        "description": "Ensure network file system services are not in use",
+        "command": "systemctl is-active nfs-server.service",
+        "expected_output": "inactive",
+        "fix": "sudo systemctl stop nfs-server.service && sudo dnf remove -y nfs-utils"
+    },
+    {
+        "id": "MBSS-OS-RHEL-21",
+        "type": "Generic",
+        "description": "Ensure rpcbind services are not in use",
+        "command": "systemctl is-active rpcbind.service",
+        "expected_output": "inactive",
+        "fix": "sudo systemctl stop rpcbind.socket rpcbind.service"
+    },
+    {
+      "id": "MBSS-OS-RHEL-22",
+      "type": "Generic",
+      "description": "Ensure xinetd services are not in use",
+      "command": "systemctl is-active xinetd.service",
+      "expected_output": "inactive",
+      "fix": "sudo systemctl stop xinetd.service && sudo dnf remove -y xinetd"
+  },
+  {
+    "id": "MBSS-OS-RHEL-24",
+    "type": "Generic",
+    "description": "Ensure reverse path filtering is enabled",
+    "command": "sysctl net.ipv4.conf.all.rp_filter net.ipv4.conf.default.rp_filter | awk -F' = ' '{print $2}' | tr '\n' ' '; echo",
+    "expected_output": "1 1",
+    "fix": "echo -e 'net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1' | sudo tee /etc/sysctl.d/60-netipv4.conf && sudo sysctl -w net.ipv4.conf.default.rp_filter=1 && sudo sysctl -p /etc/sysctl.d/60-netipv4.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-25",
+    "type": "Generic",
+    "description": "Ensure suspicious packets are logged",
+    "command": "sysctl net.ipv4.conf.all.log_martians net.ipv4.conf.default.log_martians | awk -F' = ' '{print $2}' | tr '\n' ' '; echo",
+    "expected_output": "1 1",
+    "fix": "echo -e 'net.ipv4.conf.all.log_martians = 1\nnet.ipv4.conf.default.log_martians = 1' | sudo tee /etc/sysctl.d/60-netipv4.conf && sudo sysctl -p /etc/sysctl.d/60-netipv4.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-26",
+    "type": "Generic",
+    "description": "Ensure nftables is installed",
+    "command": "rpm -q nftables",
+    "expected_output": "regex:^nftables-.*",
+    "fix": "sudo dnf install -y nftables"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-32",
+    "type": "Generic",
+    "description": "Ensure permissions on /etc/ssh/sshd_config are configured",
+    "command": "stat -c '%a %U %G' /etc/ssh/sshd_config && find /etc/ssh/sshd_config.d -type f -exec stat -c '%a %U %G %n' {} +",
+    "expected_output": "600 root root",
+    "fix": "chmod u-x,og-rwx /etc/ssh/sshd_config && chown root:root /etc/ssh/sshd_config && find /etc/ssh/sshd_config.d -type f -exec chmod u-x,og-rwx {} + && find /etc/ssh/sshd_config.d -type f -exec chown root:root {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-36",
+    "type": "Generic",
+    "description": "Ensure sshd Ciphers are configured",
+    "command": "grep -E '^Ciphers' /etc/ssh/sshd_config",
+    "expected_output": "Ciphers -3des-cbc,aes128-cbc,aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se",
+    "fix": "sed -i '/^Ciphers/d' /etc/ssh/sshd_config; echo 'Ciphers -3des-cbc,aes128-cbc,aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-38",
+    "type": "Generic",
+    "description": "Ensure sshd DisableForwarding is enabled",
+    "command": "grep -E '^DisableForwarding' /etc/ssh/sshd_config",
+    "expected_output": "DisableForwarding yes",
+    "fix": "sed -i '/^DisableForwarding/d' /etc/ssh/sshd_config; echo 'DisableForwarding yes' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-39",
+    "type": "Generic",
+    "description": "Ensure sshd HostbasedAuthentication is disabled",
+    "command": "grep -E '^HostbasedAuthentication' /etc/ssh/sshd_config",
+    "expected_output": "HostbasedAuthentication no",
+    "fix": "sed -i '/^HostbasedAuthentication/d' /etc/ssh/sshd_config; echo 'HostbasedAuthentication no' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-40",
+    "type": "Generic",
+    "description": "Ensure sshd IgnoreRhosts is enabled",
+    "command": "grep -E '^IgnoreRhosts' /etc/ssh/sshd_config",
+    "expected_output": "IgnoreRhosts yes",
+    "fix": "sed -i '/^IgnoreRhosts/d' /etc/ssh/sshd_config; echo 'IgnoreRhosts yes' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-41",
+    "type": "Generic",
+    "description": "Ensure sshd KexAlgorithms is configured",
+    "command": "grep -E '^KexAlgorithms' /etc/ssh/sshd_config",
+    "expected_output": "KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1",
+    "fix": "sed -i '/^KexAlgorithms/d' /etc/ssh/sshd_config; echo 'KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-42",
+    "type": "Generic",
+    "description": "Ensure sshd MACs are configured",
+    "command": "grep -E '^MACs' /etc/ssh/sshd_config",
+    "expected_output": "MACs -hmac-md5,hmac-md5-96,hmac-ripemd160,hmac-sha1-96,umac-64@openssh.com,hmac-md5-etm@openssh.com,hmac-md5-96-etm@openssh.com,hmac-ripemd160-etm@openssh.com,hmac-sha1-96-etm@openssh.com,umac-64-etm@openssh.com",
+    "fix": "sed -i '/^MACs/d' /etc/ssh/sshd_config; echo 'MACs -hmac-md5,hmac-md5-96,hmac-ripemd160,hmac-sha1-96,umac-64@openssh.com,hmac-md5-etm@openssh.com,hmac-md5-96-etm@openssh.com,hmac-ripemd160-etm@openssh.com,hmac-sha1-96-etm@openssh.com,umac-64-etm@openssh.com' >> /etc/ssh/sshd_config"
+},
+{
+    "id": "MBSS-OS-RHEL-43",
+    "type": "Generic",
+    "description": "Ensure sshd PermitEmptyPasswords is disabled",
+    "command": "grep -E '^PermitEmptyPasswords' /etc/ssh/sshd_config",
+    "expected_output": "PermitEmptyPasswords no",
+    "fix": "sed -i '/^PermitEmptyPasswords/d' /etc/ssh/sshd_config; echo 'PermitEmptyPasswords no' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-44",
+    "type": "Generic",
+    "description": "Ensure sshd PermitRootLogin is disabled",
+    "command": "grep -E '^PermitRootLogin' /etc/ssh/sshd_config",
+    "expected_output": "PermitRootLogin no",
+    "fix": "sed -i '/^PermitRootLogin/d' /etc/ssh/sshd_config; echo 'PermitRootLogin no' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-45",
+    "type": "Generic",
+    "description": "Ensure sshd PermitUserEnvironment is disabled",
+    "command": "grep -E '^PermitUserEnvironment' /etc/ssh/sshd_config",
+    "expected_output": "PermitUserEnvironment no",
+    "fix": "sed -i '/^PermitUserEnvironment/d' /etc/ssh/sshd_config; echo 'PermitUserEnvironment no' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-46",
+    "type": "Generic",
+    "description": "Ensure sshd UsePAM is enabled",
+    "command": "grep -E '^UsePAM' /etc/ssh/sshd_config",
+    "expected_output": "UsePAM yes",
+    "fix": "sed -i '/^UsePAM/d' /etc/ssh/sshd_config; echo 'UsePAM yes' >> /etc/ssh/sshd_config"
+  },
+  {
+    "id": "MBSS-OS-RHEL-47",
+    "type": "Generic",
+    "description": "Ensure sudo is installed",
+    "command": "dnf list installed | grep sudo",
+    "expected_output": "sudo",
+    "fix": "dnf install -y sudo"
+  },
+  {
+    "id": "MBSS-OS-RHEL-48",
+    "type": "Generic",
+    "description": "Ensure sudo log file exists",
+    "command": "grep -m1 -Eo '^Defaults logfile=.*' /etc/sudoers | sed 's/\"//g'",
+    "expected_output": "Defaults logfile=/var/log/sudo.log",
+    "fix": "echo 'Defaults logfile=\"/var/log/sudo.log\"' | EDITOR='tee -a' visudo"
+}
+,{
+    "id": "MBSS-OS-RHEL-49",
+    "type": "Generic",
+    "description": "Ensure NOPASSWD is not enabled",
+    "command": "grep -E 'NOPASSWD' /etc/sudoers",
+    "expected_output": "",
+    "fix": "sed -i '/NOPASSWD/d' /etc/sudoers"
+},
+  {
+    "id": "MBSS-OS-RHEL-52",
+    "type": "Generic",
+    "description": "Ensure latest version of pam is installed",
+    "command": "rpm -q --qf '%{VERSION}-%{RELEASE}' pam",
+    "expected_output": "pam-1.3.1-25 or later",
+    "fix": "dnf upgrade -y pam"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-58",
+    "type": "Generic",
+    "description": "Ensure password failed attempts lockout is configured",
+    "command": "grep -E '^\\s*deny\\s*=\\s*[0-5]' /etc/security/faillock.conf",
+    "expected_output": "deny = 5",
+    "fix": "sed -i 's/^\\s*deny\\s*=\\s*[0-5]\\s*$/deny = 5/' /etc/security/faillock.conf"
+  },
+  { 
+    "id": "MBSS-OS-RHEL-60",
+    "type": "Generic",
+    "description": "Ensure password length is configured",
+   "command": "grep -P '^\\s*minlen\\s*=\\s*[1-9][4-9]' /etc/security/pwquality.conf",
+    "expected_output": "minlen = 14",
+    "fix": "sed -i 's/^\\s*minlen\\s*=.*/minlen = 14/' /etc/security/pwquality.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-61",
+    "type": "List",
+    "description": "Ensure password complexity is configured",
+    "command": "grep -E '^( *minclass| *dcredit| *ucredit| *ocredit| *lcredit)' /etc/security/pwquality.conf | sed 's/^[ \t]*//'",
+    "expected_output": ["minclass = 4",
+    "dcredit = -1",
+    "ucredit = -1",
+    "ocredit = -1",
+    "lcredit = -1"],
+    "fix": "sed -i '/^\\s*minclass/d; /^\\s*dcredit/d; /^\\s*ucredit/d; /^\\s*ocredit/d; /^\\s*lcredit/d' /etc/security/pwquality.conf && echo -e 'minclass = 4\\ndcredit = -1\\nucredit = -1\\nocredit = -1\\nlcredit = -1' >> /etc/security/pwquality.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-62",
+    "type": "Generic",
+    "description": "Ensure password dictionary check is enabled",
+    "command": "grep -P '^\\s*dictcheck\\s*=\\s*[^0]' /etc/security/pwquality.conf",
+    "expected_output": "dictcheck = 1",
+    "fix": "sed -i 's/^\\s*dictcheck\\s*=.*/dictcheck = 1/' /etc/security/pwquality.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-63",
+    "type": "Generic",
+    "description": "Ensure password quality is enforced for the root user",
+    "command": "grep -Psi -- '^\\s*enforce_for_root\\b' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf",
+    "expected_output": "enforce_for_root",
+    "fix": "printf '\\n%s\\n' 'enforce_for_root' >> /etc/security/pwquality.conf.d/50-pwroot.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-64",
+    "type": "Generic",
+    "description": "Ensure password history remember is configured",
+    "command": "grep -P '^\\s*remember\\s*=\\s*2[4-9]' /etc/security/pwhistory.conf",
+    "expected_output": "remember = 24",
+    "fix": "sed -i 's/^\\s*remember\\s*=.*/remember = 24/' /etc/security/pwhistory.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-65",
+    "type": "Generic",
+    "description": "Ensure password history is enforced for the root user",
+    "command": "grep -P '^\\s*enforce_for_root' /etc/security/pwhistory.conf",
+    "expected_output": "enforce_for_root",
+    "fix": "echo 'enforce_for_root' >> /etc/security/pwhistory.conf"
+  },
+  {
+    "id": "MBSS-OS-RHEL-67",
+    "type": "Generic",
+    "description": "Ensure pam_unix does not include nullok",
+    "command": "grep -P -- '\\bpam_unix\\.so\\b' /etc/authselect/$(head -1 /etc/authselect/authselect.conf)/{password,system}-auth",
+    "expected_output": "nullok",
+    "fix": "sed -ri 's/(pam_unix\\.so\\b.*)nullok(\\s*.*)/\\1\\2/' /etc/authselect/$(head -1 /etc/authselect/authselect.conf)/{password,system}-auth; authselect apply-changes"
+  },
+  {
+    "id": "MBSS-OS-RHEL-68",
+    "type": "Generic",
+    "description": "Ensure pam_unix does not include remember",
+    "command": "grep -P -- '^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r]+\\s+)?remember=\\d+' /etc/authselect/$(head -1 /etc/authselect/authselect.conf)/{password,system}-auth",
+    "expected_output": "remember",
+    "fix": "sed -ri 's/(^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+.*)(remember=[1-9][0-9]*)(\\s*.*)/\\1\\4/' /etc/authselect/$(head -1 /etc/authselect/authselect.conf)/{password,system}-auth; authselect apply-changes"
+  },
+  
+  
+  {
+    "id": "MBSS-OS-RHEL-72",
+    "type": "Generic",
+    "description": "Ensure password expiration is 365 days or less",
+    "command": "grep -E '^PASS_MAX_DAYS' /etc/login.defs",
+    "expected_output": "PASS_MAX_DAYS 365",
+    "fix": "sed -i '/^PASS_MAX_DAYS/d' /etc/login.defs; echo 'PASS_MAX_DAYS 365' >> /etc/login.defs; for user in $(cut -d: -f1 /etc/shadow); do chage --maxdays 365 $user; done"
+  },
+  {
+    "id": "MBSS-OS-RHEL-73",
+    "type": "Generic",
+    "description": "Ensure inactive password lock is 30 days or less",
+    "command": "useradd -D | grep INACTIVE",
+    "expected_output": "INACTIVE=30",
+    "fix": "useradd -D -f 30; for user in $(cut -d: -f1 /etc/shadow); do chage --inactive 30 $user; done"
+  },
+  {
+    "id": "MBSS-OS-RHEL-74",
+    "type": "Generic",
+    "description": "Ensure default group for the root account is GID 0",
+    "command": "id -g root",
+    "expected_output": "0",
+    "fix": "usermod -g 0 root"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-78",
+    "type": "Generic",
+    "description": "Ensure nologin is not listed in /etc/shells.",
+    "command": "grep '/nologin' /etc/shells",
+    "expected_output": "",
+    "fix": "sed -i '/nologin/d' /etc/shells"
+  },
+  {
+    "id": "MBSS-OS-RHEL-80",
+    "type": "Generic",
+    "description": "Ensure rsyslog is installed.",
+    "command": "rpm -q rsyslog",
+    "expected_output": "regex:^rsyslog-*",
+    "fix": "dnf install -y rsyslog"
+  },
+{
+    "id": "MBSS-OS-RHEL-81",
+    "type": "Generic",
+    "description": "Ensure rsyslog default file permissions are configured.",
+    "command": "grep '\\$FileCreateMode' /etc/rsyslog.conf /etc/rsyslog.d/*.conf",
+    "expected_output": "$FileCreateMode 0640",
+    "fix": "sed -i 's/^\\$FileCreateMode.*/$FileCreateMode 0640/' /etc/rsyslog.conf && systemctl restart rsyslog"
+  },
+  {
+    "id": "MBSS-OS-RHEL-83",
+    "type": "Generic",
+    "description": "Ensure rsyslog is not configured to receive logs from a remote client.",
+    "command": "grep -E 'imtcp|InputTCPServerRun' /etc/rsyslog.conf /etc/rsyslog.d/*.conf",
+    "expected_output": "",
+    "fix": "sed -i '/imtcp/d' /etc/rsyslog.conf /etc/rsyslog.d/*.conf && sed -i '/InputTCPServerRun/d' /etc/rsyslog.conf /etc/rsyslog.d/*.conf && systemctl restart rsyslog"
+  },
+  {
+    "id": "MBSS-OS-RHEL-84",
+    "type": "Generic",
+    "description": "Ensure systemd-journal-remote is installed.",
+    "command": "rpm -q systemd-journal-remote",
+    "expected_output": "regex:^systemd-journal-remote-.*",
+    "fix": "dnf install -y systemd-journal-remote"
+  },
+  {
+    "id": "MBSS-OS-RHEL-85",
+    "type": "Generic",
+    "description": "Ensure journald is not configured to receive logs from a remote client.",
+    "command": "systemctl is-enabled systemd-journal-remote.socket",
+    "expected_output": "masked",
+    "fix": "systemctl --now mask systemd-journal-remote.socket"
+  }, 
+{
+    "id": "MBSS-OS-RHEL-87",
+    "type": "Generic",
+    "description": "Ensure journald is configured to compress large log files.",
+    "command": "grep '^Compress=' /etc/systemd/journald.conf",
+    "expected_output": "Compress=yes",
+    "fix": "sed -i '/^#Compress=/c\\Compress=yes' /etc/systemd/journald.conf && systemctl restart systemd-journald.service"
+  },
+  {
+    "id": "MBSS-OS-RHEL-88",
+    "type": "Generic",
+    "description": "Ensure journald is configured to write logfiles to persistent disk.",
+    "command": "grep '^Storage=' /etc/systemd/journald.conf",
+    "expected_output": "Storage=persistent",
+    "fix": "sed -i '/^#Storage=/c\\Storage=persistent' /etc/systemd/journald.conf && systemctl restart systemd-journald.service"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-91",
+    "type": "Generic",
+    "description": "Ensure audit is installed.",
+    "command": "rpm -q audit",
+    "expected_output": "audit-*",
+    "fix": "dnf install -y audit"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-93",
+    "type": "Generic",
+    "description": "Ensure auditd service is enabled.",
+    "command": "systemctl is-enabled auditd",
+    "expected_output": "enabled",
+    "fix": "systemctl --now enable auditd"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-95",
+    "type": "Generic",
+    "description": "Ensure audit logs are not automatically deleted.",
+    "command": "grep 'max_log_file_action' /etc/audit/auditd.conf",
+    "expected_output": "max_log_file_action = keep_logs",
+    "fix": "grep -q '^max_log_file_action' /etc/audit/auditd.conf && sed -i 's/^max_log_file_action.*/max_log_file_action = keep_logs/' /etc/audit/auditd.conf || echo 'max_log_file_action = keep_logs' >> /etc/audit/auditd.conf; systemctl restart auditd"
+},
+    
+{
+    "id": "MBSS-OS-RHEL-101",
+    "type": "Generic",
+    "description": "Ensure events that modify date and time information are collected.",
+    "command": "grep 'time-change' /etc/audit/rules.d/*.rules",
+    "expected_output": "-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change",
+    "fix": "echo '-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change' >> /etc/audit/rules.d/time-change.rules && augenrules --load"
+  },
+ 
+  
+  {
+    "id": "MBSS-OS-RHEL-111",
+    "type": "Generic",
+    "description": "Ensure events that modify the system's Mandatory Access Controls are collected.",
+    "command": "auditctl -l | grep -E 'MAC-policy'",
+    "expected_output": "-w /etc/selinux -p wa -k MAC-policy",
+    "fix": "printf \"%s\\n\" \"-w /etc/selinux -p wa -k MAC-policy\" \"-w /usr/share/selinux -p wa -k MAC-policy\" >> /etc/audit/rules.d/50-MAC-policy.rules && augenrules --load"
+  },
+  
+  {
+    "id": "MBSS-OS-RHEL-117",
+    "type": "Generic",
+    "description": "Ensure the audit configuration is immutable.",
+    "command": "grep -E '^\\s*-e\\s+2' /etc/audit/rules.d/99-finalize.rules",
+    "expected_output": "-e 2",
+    "fix": "printf -- \"-e 2\\n\" >> /etc/audit/rules.d/99-finalize.rules && augenrules --load"
+  },
+  {
+    "id": "MBSS-OS-RHEL-118",
+    "type": "Generic",
+    "description": "Ensure the running and on-disk configuration is the same.",
+    "command": "diff <(auditctl -l | grep -Ev '^\\s*(enabled|failure|pid|rate_limit|backlog|lost|backlog_wait_time|backlog_wait_time_actual)\\s*$') <(augenrules --load >/dev/null 2>&1 && auditctl -l | grep -Ev '^\\s*(enabled|failure|pid|rate_limit|backlog|lost|backlog_wait_time|backlog_wait_time_actual)\\s*$')",
+    "expected_output": "",
+    "fix": "augenrules --load && if [[ $(auditctl -s | grep 'enabled') =~ '2' ]]; then echo 'Reboot required to load rules'; fi"
+  },
+  {
+    "id": "MBSS-OS-RHEL-119",
+    "type": "Generic",
+    "description": "Ensure only authorized users own audit log files.",
+    "command": "[ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F '=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f ! -user root",
+    "expected_output": "",
+    "fix": "[ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F '=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f ! -user root -exec chown root {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-120",
+    "type": "Generic",
+    "description": "Ensure only authorized groups are assigned ownership of audit log files.",
+    "command": "find $(dirname $(awk -F '=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\)",
+    "expected_output": "",
+    "fix": "find $(dirname $(awk -F '=' '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + && \\chgrp adm /var/log/audit/ && \\sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf && \\systemctl restart auditd"
+  },
+  {
+    "id": "MBSS-OS-RHEL-121",
+    "type": "Generic",
+    "description": "Ensure audit configuration files are 640 or more restrictive.",
+    "command": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -perm /0137",
+    "expected_output": "",
+    "fix": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec chmod u-x,g-wx,o-rwx {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-122",
+    "type": "Generic",
+    "description": "Ensure audit configuration files are owned by the root user.",
+    "command": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -user root",
+    "expected_output": "",
+    "fix": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -user root -exec chown root {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-123",
+    "type": "Generic",
+    "description": "Ensure audit configuration files belong to the root group.",
+    "command": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root",
+    "expected_output": "",
+    "fix": "find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-124",
+    "type": "Generic",
+    "description": "Ensure audit tools are 755 or more restrictive.",
+    "command": "find /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -perm /022",
+    "expected_output": "",
+    "fix": "chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules"
+  },
+  {
+    "id": "MBSS-OS-RHEL-125",
+    "type": "Generic",
+    "description": "Ensure audit tools are owned by the root user.",
+    "command": "find /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules ! -user root",
+    "expected_output": "",
+    "fix": "chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules"
+  },
+  {
+    "id": "MBSS-OS-RHEL-126",
+    "type": "Generic",
+    "description": "Ensure audit tools belong to the root group.",
+    "command": "find /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules ! -group root",
+    "expected_output": "",
+    "fix": "chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules"
+  },
+  {
+    "id": "MBSS-OS-RHEL-127",
+    "type": "Generic",
+    "description": "Ensure AIDE is installed.",
+    "command": "rpm -q aide",
+    "expected_output": "package aide is installed",
+    "fix": "dnf install -y aide"
+  },
+{
+  "id": "MBSS-OS-RHEL-129",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/passwd are configured.",
+  "command": "stat -c 'Access: %a Uid: (%u/0) Gid: (%g/0)' /etc/passwd",
+  "expected_output": "Access: 644 Uid: (0/0) Gid: (0/0)",
+  "fix": "chmod u-x,go-wx /etc/passwd && chown root:root /etc/passwd"
+},
+{
+  "id": "MBSS-OS-RHEL-131",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/group are configured.",
+  "command": "stat -c 'Access: %a Uid: (%u/0) Gid: (%g/0)' /etc/group",
+  "expected_output": "Access: 644 Uid: (0/0) Gid: (0/0)",
+  "fix": "chmod u-x,go-wx /etc/group && chown root:root /etc/group"
+},
+{
+  "id": "MBSS-OS-RHEL-132",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/group- are configured.",
+  "command": "stat -c 'Access: %a Uid: (%u/0) Gid: (%g/0)' /etc/group-",
+  "expected_output": "Access: 644 Uid: (0/0) Gid: (0/0)",
+  "fix": "chmod u-x,go-wx /etc/group- && chown root:root /etc/group-"
+},
+{
+  "id": "MBSS-OS-RHEL-133",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/shadow are configured.",
+  "command": "stat -c 'Access: %03a Uid: (%u/0) Gid: (%g/0)' /etc/shadow",
+  "expected_output": "Access: 000 Uid: (0/0) Gid: (0/0)",
+  "fix": "chown root:root /etc/shadow && chmod 0000 /etc/shadow"
+},
+{
+  "id": "MBSS-OS-RHEL-134",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/shadow- are configured.",
+  "command": "stat -c 'Access: %03a Uid: (%u/0) Gid: (%g/0)' /etc/shadow-",
+  "expected_output": "Access: 000 Uid: (0/0) Gid: (0/0)",
+  "fix": "chown root:root /etc/shadow- && chmod 0000 /etc/shadow-"
+},
+{
+  "id": "MBSS-OS-RHEL-135",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/gshadow are configured.",
+  "command": "stat -c 'Access: %03a Uid: (%u/0) Gid: (%g/0)' /etc/gshadow",
+  "expected_output": "Access: 000 Uid: (0/0) Gid: (0/0)",
+  "fix": "chown root:root /etc/gshadow && chmod 0000 /etc/gshadow"
+},
+{
+  "id": "MBSS-OS-RHEL-136",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/gshadow- are configured.",
+  "command": "stat -c 'Access: %03a Uid: (%u/0) Gid: (%g/0)' /etc/gshadow-",
+  "expected_output": "Access: 000 Uid: (0/0) Gid: (0/0)",
+  "fix": "chown root:root /etc/gshadow- && chmod 0000 /etc/gshadow-"
+},
+{
+  "id": "MBSS-OS-RHEL-137",
+  "type": "Generic",
+  "description": "Ensure permissions on /etc/shells are configured.",
+  "command": "stat -c 'Access: %a Uid: (%u/0) Gid: (%g/0)' /etc/shells",
+  "expected_output": "Access: 644 Uid: (0/0) Gid: (0/0)",
+  "fix": "chown root:root /etc/shells && chmod u-x,go-wx /etc/shells"
+},
+{
+  "id": "MBSS-OS-RHEL-138",
+  "type": "Generic",
+  "description": "Ensure no unowned or ungrouped files or directories exist.",
+  "command": "find / -xdev -nouser -o -nogroup",
+  "expected_output": "",
+  "fix": "find / -xdev -nouser -o -nogroup -exec chown root:root {} +"
+},
+  {
+    "id": "MBSS-OS-RHEL-139",
+    "type": "Generic",
+    "description": "Ensure accounts in /etc/passwd use shadowed passwords.",
+    "command": "awk -F: '($2 != 'x' && $2 != '!') {print $1}' /etc/passwd",
+    "expected_output": "",
+    "fix": "sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwd"
+  },
+  {
+    "id": "MBSS-OS-RHEL-140",
+    "type": "Generic",
+    "description": "Ensure /etc/shadow password fields are not empty.",
+    "command": "awk -F: '($2 == \"\") {print $1}' /etc/shadow",
+    "expected_output": "",
+    "fix": "for user in $(awk -F: '($2 == \"\") {print $1}' /etc/shadow); do passwd -l $user; done"
+  },
+  {
+    "id": "MBSS-OS-RHEL-145",
+    "type": "Generic",
+    "description": "RHEL 8 system commands must have mode 755 or less permissive.",
+    "command": "find /bin /usr/bin /sbin /usr/sbin -type f -perm /022 -exec stat -c '%n %a' {} +",
+    "expected_output": "",
+    "fix": "find /bin /usr/bin /sbin /usr/sbin -type f -perm /022 -exec chmod 755 {} +"
+  },
+  {
+    "id": "MBSS-OS-RHEL-147",
+    "type": "Generic",
+    "description": "RHEL 8 must have the USBGuard installed.",
+    "command": "rpm -q usbguard",
+    "expected_output": "usbguard-*",
+    "fix": "yum install -y usbguard.x86_64"
+  },
+  {
+    "id": "MBSS-OS-RHEL-149",
+    "type": "Generic",
+    "description": "RHEL 8 must display the date and time of the last successful account logon upon an SSH logon.",
+    "command": "grep -E '^\\s*PrintLastLog\\s+yes' /etc/ssh/sshd_config",
+    "expected_output": "PrintLastLog yes",
+    "fix": "sed -i 's/^#*PrintLastLog.*/PrintLastLog yes/' /etc/ssh/sshd_config && systemctl restart sshd"
+  },
+  {
+    "id": "MBSS-OS-RHEL-150",
+    "type": "Generic",
+    "description": "RHEL 8 network interfaces must not be in promiscuous mode.",
+    "command": "ip link | grep 'PROMISC'",
+    "expected_output": "",
+    "fix": "for iface in $(ip -o link show | awk -F': ' '{print $2}'); do ip link set dev $iface promisc off; done"
+  },
+{
+  "id": "MBSS-OS-RHEL-110",
+  "type": "List",
+  "description": "Ensure file deletion events by users are collected.",
+  "command": "auditctl -l | grep -E 'delete'",
+  "expected_output": [
+    "-a always,exit -F arch=b64 -S rename,unlink,unlinkat,renameat -F auid>=1000 -F auid!=-1 -F key=delete",
+    "-a always,exit -F arch=b32 -S rename,unlink,unlinkat,renameat -F auid>=1000 -F auid!=-1 -F key=delete"
+  ],
+  "file": "/etc/audit/rules.d/50-delete.rules",
+  "fix": "UID_MIN=$(awk '/^\\s*UID_MIN/ {print $2}' /etc/login.defs) && [ -n \"${UID_MIN}\" ] && printf \"%s\\n\" \"-a always,exit -F arch=b64 -S rename,unlink,unlinkat,renameat -F auid>=${UID_MIN} -F auid!=-1 -F key=delete\" \"-a always,exit -F arch=b32 -S rename,unlink,unlinkat,renameat -F auid>=${UID_MIN} -F auid!=-1 -F key=delete\" >> /etc/audit/rules.d/50-delete.rules && augenrules --load"
+},
+{
+  "id": "MBSS-OS-RHEL-30",
+  "type": "FileCheck",
+  "description": "Ensure crontab is restricted to authorized users",
+  "command": "ls -l --time-style=+ /etc/cron.allow /etc/cron.deny 2>/dev/null | awk '{gsub(/\\..*/, \"\", $1); print $1, $3, $4, $NF}'",
+  "expected_output": [
+    "-rw-r----- root root /etc/cron.allow",
+    "-rw-r----- root root /etc/cron.deny"
+  ],
+  "fix": "[ ! -e \"/etc/cron.allow\" ] && sudo touch /etc/cron.allow; sudo chown root:root /etc/cron.allow; sudo chmod 640 /etc/cron.allow; [ ! -e \"/etc/cron.deny\" ] && sudo touch /etc/cron.deny; sudo chown root:root /etc/cron.deny; sudo chmod 640 /etc/cron.deny"
+},
+{
+  "id": "MBSS-OS-RHEL-31",
+  "type": "FileCheck",
+  "description": "Ensure at is restricted to authorized users",
+  "command": "ls -l --time-style=+ /etc/at.allow /etc/at.deny 2>/dev/null | awk '{gsub(/\\..*/, \"\", $1); print $1, $3, $4, $NF}'",
+  "expected_output": [
+    "-rw-r----- root root /etc/at.allow",
+    "-rw-r----- root root /etc/at.deny"
+  ],
+  "fix": "[ ! -e \"/etc/at.allow\" ] && sudo touch /etc/at.allow; sudo chown root:root /etc/at.allow; sudo chmod 640 /etc/at.allow; [ ! -e \"/etc/at.deny\" ] && sudo touch /etc/at.deny; sudo chown root:root /etc/at.deny; sudo chmod 640 /etc/at.deny"
+},
+{
+  "id": "MBSS-OS-RHEL-33",
+  "type": "List",
+  "description": "Ensure permissions on SSH private host key files are configured",
+  "command": "find /etc/ssh -type f -name 'ssh_host_*_key' -exec stat -c '%n %a %U %G' {} +",
+  "expected_output": [
+    "/etc/ssh/ssh_host_rsa_key 600 root root",
+    "/etc/ssh/ssh_host_ecdsa_key 600 root root",
+    "/etc/ssh/ssh_host_ed25519_key 600 root root"
+  ],
+  "fix": "l_skgn=\"$(grep -Po -- '^(ssh_keys|_?ssh)\\b' /etc/group)\"; l_skgid=\"$(awk -F: '($1 == \\\"$l_skgn\\\"){print $3}' /etc/group)\"; if [ -n \"$l_skgid\" ]; then l_agroup=\"(root|$l_skgn)\"; l_sgroup=\"$l_skgn\"; l_mfix=\"u-x,g-wx,o-rwx\"; else l_agroup=\"root\"; l_sgroup=\"root\"; l_mfix=\"u-x,go-rwx\"; fi; find -L /etc/ssh -xdev -type f -exec sh -c 'file \"$1\" | grep -Pq \":\\s+OpenSSH\\s+private\\s+key\\b\" && chmod \"$2\" \"$1\" && chown root:\"$3\" \"$1\"' _ {} \"$l_mfix\" \"$l_sgroup\" \\;"
+},
+{
+  "id": "MBSS-OS-RHEL-34",
+  "type": "List",
+  "description": "Ensure permissions on SSH public host key files are configured",
+  "command": "find /etc/ssh -type f -name 'ssh_host_*_key.pub' -exec stat -c '%n %a %U %G' {} +",
+  "expected_output": [
+    "/etc/ssh/ssh_host_rsa_key.pub 644 root root",
+    "/etc/ssh/ssh_host_ecdsa_key.pub 644 root root",
+    "/etc/ssh/ssh_host_ed25519_key.pub 644 root root"
+  ],
+  "fix": "find /etc/ssh -type f -name 'ssh_host_*_key.pub' -exec chmod 644 {} + && find /etc/ssh -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} +"
+},
+{
+  "id": "MBSS-OS-RHEL-37",
+  "type": "List",
+  "description": "Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured",
+  "command": "grep -E '^(ClientAliveInterval|ClientAliveCountMax)' /etc/ssh/sshd_config | tr -s ' '",
+  "expected_output": [
+    "ClientAliveInterval 15",
+    "ClientAliveCountMax 3"
+  ],
+  "file": "/etc/ssh/sshd_config",
+  "fix": "sed -i '/^ClientAliveInterval/d' /etc/ssh/sshd_config; echo 'ClientAliveInterval 15' >> /etc/ssh/sshd_config; sed -i '/^ClientAliveCountMax/d' /etc/ssh/sshd_config; echo 'ClientAliveCountMax 3' >> /etc/ssh/sshd_config; systemctl restart sshd"
+},
+{
+  "id": "MBSS-OS-RHEL-82",
+  "type": "List",
+  "description": "Ensure logging is configured.",
+  "command": "grep -E 'auth,authpriv|mail|cron|local[0-7]' /etc/rsyslog.conf /etc/rsyslog.d/*.conf | tr -s ' '",
+  "expected_output": [
+    "auth,authpriv.* /var/log/secure",
+    "mail.* -/var/log/mail",
+    "cron.* /var/log/cron",
+    "*.=warning;*.=err -/var/log/warn",
+    "*.crit /var/log/warn",
+    "*.*;mail.none;news.none -/var/log/messages",
+    "local0,local1.* -/var/log/localmessages",
+    "local2,local3.* -/var/log/localmessages",
+    "local4,local5.* -/var/log/localmessages",
+    "local6,local7.* -/var/log/localmessages"
+  ],
+  "file": "/etc/rsyslog.d/custom_logging.conf",
+  "fix": "cat << EOF > /etc/rsyslog.d/custom_logging.conf\n*.emerg :omusrmsg:*\nauth,authpriv.* /var/log/secure\nmail.* -/var/log/mail\ncron.* /var/log/cron\n*.=warning;*.=err -/var/log/warn\n*.crit /var/log/warn\n*.*;mail.none;news.none -/var/log/messages\nlocal0,local1.* -/var/log/localmessages\nlocal2,local3.* -/var/log/localmessages\nlocal4,local5.* -/var/log/localmessages\nlocal6,local7.* -/var/log/localmessages\nEOF\nsystemctl restart rsyslog"
+},
+{
+  "id": "MBSS-OS-RHEL-96",
+  "type": "List",
+  "description": "Ensure system is disabled when audit logs are full.",
+  "command": "grep -E '^\\s*(disk_full_action|disk_error_action)\\s*=\\s*' /etc/audit/auditd.conf",
+  "expected_output": [
+    "disk_full_action = halt",
+    "disk_error_action = halt"
+  ],
+  "fix": "sed -i 's/^\\s*disk_full_action\\s*=.*/disk_full_action = halt/' /etc/audit/auditd.conf && sed -i 's/^\\s*disk_error_action\\s*=.*/disk_error_action = halt/' /etc/audit/auditd.conf"
+},
+{
+  "id": "MBSS-OS-RHEL-97",
+  "type": "List",
+  "description": "Ensure system warns when audit logs are low on space.",
+  "command": "grep -E '^\\s*(space_left_action|admin_space_left_action)\\s*=\\s*' /etc/audit/auditd.conf",
+  "expected_output": [
+    "space_left_action = email",
+    "admin_space_left_action = single"
+  ],
+  "file": "/etc/audit/auditd.conf",
+  "fix": "sed -i 's/^\\s*space_left_action\\s*=.*/space_left_action = email/' /etc/audit/auditd.conf && sed -i 's/^\\s*admin_space_left_action\\s*=.*/admin_space_left_action = single/' /etc/audit/auditd.conf"
+},
+{
+  "id": "MBSS-OS-RHEL-98",
+  "type": "List",
+  "description": "Ensure changes to system administration scope (sudoers) are collected.",
+  "command": "auditctl -l | grep -F -e '/etc/sudoers' -e '/etc/sudoers.d'",
+  "expected_output": [
+    "-w /etc/sudoers -p wa -k scope",
+    "-w /etc/sudoers.d -p wa -k scope"
+  ],
+  "file": "/etc/audit/rules.d/50-scope.rules",
+  "fix": "for rule in '-w /etc/sudoers -p wa -k scope' '-w /etc/sudoers.d -p wa -k scope'; do grep -Fxq \"$rule\" /etc/audit/rules.d/50-scope.rules || echo \"$rule\" >> /etc/audit/rules.d/50-scope.rules; done && auditctl -D && augenrules --load && sleep 5"
+},
+{
+  "id": "MBSS-OS-RHEL-102",
+  "type": "List",
+  "description": "Ensure events that modify the system's network environment are collected.",
+  "command": "auditctl -l | sed 's/  */ /g' | sed 's/^ //g'",
+  "expected_output": [
+  "-a always,exit -F arch=b64 -S setdomainname sethostname -F key=system-locale",
+  "-a always,exit -F arch=b32 -S setdomainname sethostname -F key=system-locale",
+  "-w /etc/issue -p wa -k system-locale",
+  "-w /etc/issue.net -p wa -k system-locale",
+  "-w /etc/hosts -p wa -k system-locale"
+],
+  "file": "/etc/audit/rules.d/50-system_local.rules",
+  "fix": "for rule in \"-a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale\" \"-a always,exit -F arch=b32 -S sethostname,setdomainname -F key=system-locale\" \"-w /etc/issue -p wa -k system-locale\" \"-w /etc/issue.net -p wa -k system-locale\" \"-w /etc/hosts -p wa -k system-locale\"; do grep -Fxq -- \"$rule\" /etc/audit/rules.d/50-system_local.rules || echo \"$rule\" >> /etc/audit/rules.d/50-system_local.rules; done && augenrules --load && sleep 5"
+},
+{
+  "id": "MBSS-OS-RHEL-130",
+  "type": "List",
+  "description": "Ensure permissions on /etc/opasswd are configured.",
+  "command": "[ -e '/etc/security/opasswd' ] && stat -c '%n: Access: %a Uid: (%u/%U) Gid: (%g/%G)' /etc/security/opasswd; [ -e '/etc/security/opasswd.old' ] && stat -c '%n: Access: %a Uid: (%u/%U) Gid: (%g/%G)' /etc/security/opasswd.old",
+  "expected_output": [
+    "/etc/security/opasswd: Access: 600 Uid: (0/root) Gid: (0/root)"
+  ],
+  "fix": "[ -e \"/etc/security/opasswd\" ] && chmod 600 /etc/security/opasswd && chown root:root /etc/security/opasswd; [ -e \"/etc/security/opasswd.old\" ] && chmod 600 /etc/security/opasswd.old && chown root:root /etc/security/opasswd.old"
+},
+{
+  "id": "MBSS-OS-RHEL-141",
+  "type": "Generic",
+  "description": "Ensure all groups in /etc/passwd exist in /etc/group",
+  "command": "awk -F: '{print $4}' /etc/passwd | sort -n | uniq | while read gid; do grep -q \"^.*:.*:$gid:\" /etc/group || echo \"Missing group for GID: $gid\"; done",
+  "expected_output": "",
+  "fix": "awk -F: '{print $4}' /etc/passwd | sort -n | uniq | while read gid; do grep -q \"^.*:.*:$gid:\" /etc/group || groupadd -g $gid missing_group_$gid; done"
+},
+{
+  "id": "MBSS-OS-RHEL-143",
+  "type": "List",
+  "description": "RHEL 8 must automatically lock an account when three unsuccessful logon attempts occur during a 15-minute time period.",
+  "command": "grep -h pam_faillock /etc/pam.d/system-auth /etc/pam.d/password-auth",
+  "expected_output": [
+    "auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0",
+    "auth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0",
+    "account required pam_faillock.so"
+  ],
+  "file": "/etc/pam.d/system-auth,/etc/pam.d/password-auth",
+  "fix": "sed -i '/pam_faillock.so/d' /etc/pam.d/system-auth /etc/pam.d/password-auth; echo -e 'auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0\\nauth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0\\naccount required pam_faillock.so' >> /etc/pam.d/system-auth; echo -e 'auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0\\nauth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0\\naccount required pam_faillock.so' >> /etc/pam.d/password-auth; systemctl restart sssd.service"
+},
+{
+  "id": "MBSS-OS-RHEL-144",
+  "type": "List",
+  "description": "RHEL 8 must automatically lock an account until the locked account is released by an administrator when three unsuccessful logon attempts occur during a 15-minute time period.",
+  "command": "grep -h pam_faillock /etc/pam.d/system-auth /etc/pam.d/password-auth",
+  "expected_output": [
+    "auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0",
+    "auth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0",
+    "account required pam_faillock.so"
+  ],
+  "file": "/etc/pam.d/system-auth,/etc/pam.d/password-auth",
+  "fix": "sed -i '/pam_faillock.so/d' /etc/pam.d/system-auth /etc/pam.d/password-auth; echo -e 'auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0\\nauth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0\\naccount required pam_faillock.so' >> /etc/pam.d/system-auth; echo -e 'auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0\\nauth required pam_faillock.so authfail dir=/var/log/faillock unlock_time=0\\naccount required pam_faillock.so' >> /etc/pam.d/password-auth; systemctl restart sssd.service"
+},
+{
+  "id": "MBSS-OS-RHEL-146",
+  "type": "List",
+  "description": "The RHEL 8 fapolicy module must be configured to employ a deny-all, permit-by-exception policy to allow the execution of authorized software programs.",
+  "command": "grep 'permissive' /etc/fapolicyd/fapolicyd.conf; tail -n 1 /etc/fapolicyd/fapolicyd.rules /etc/fapolicyd/rules.d/* 2>/dev/null",
+  "expected_output": [
+    "permissive = 0",
+    "deny perm=any all : all"
+  ],
+  "file": "/etc/fapolicyd/fapolicyd.rules",
+  "fix": "mkdir -p /etc/fapolicyd; touch /etc/fapolicyd/fapolicyd.rules; sed -i 's/^permissive.*/permissive = 0/' /etc/fapolicyd/fapolicyd.conf || echo 'permissive = 0' >> /etc/fapolicyd/fapolicyd.conf; grep -Fxq 'deny perm=any all : all' /etc/fapolicyd/fapolicyd.rules || echo 'deny perm=any all : all' >> /etc/fapolicyd/fapolicyd.rules; systemctl restart fapolicyd"
+},
+{
+  "id": "MBSS-OS-RHEL-148",
+  "type": "List",
+  "description": "RHEL 8 must define default permissions for logon and non-logon shells.",
+  "command": "grep -H -E '^\\s*umask\\s+077' /etc/bashrc /etc/csh.cshrc /etc/profile",
+  "expected_output": [
+    "umask 077"
+  ],
+  "file": "/etc/bashrc,/etc/csh.cshrc,/etc/profile",
+  "fix": "for f in /etc/bashrc /etc/csh.cshrc /etc/profile; do grep -qE '^\\s*umask\\s+077' \"$f\" || echo 'umask 077' >> \"$f\"; done"
+},
+{
+  "id": "MBSS-OS-RHEL-151",
+  "type": "FileCheck",
+  "description": "The RHEL 8 SSH public host key files must have mode 0644 or less permissive.",
+  "command": "stat -c \"%n: %a\" /etc/ssh/*key.pub",
+  "expected_output": [
+    "/etc/ssh/ssh_host_ecdsa_key.pub: 644",
+    "/etc/ssh/ssh_host_ed25519_key.pub: 644",
+    "/etc/ssh/ssh_host_rsa_key.pub: 644"
+  ],
+  "fix": "chmod 0644 /etc/ssh/*key.pub && systemctl restart sshd.service"
+},
+{
+  "id": "MBSS-OS-RHEL-152",
+  "type": "List",
+  "description": "RHEL 8 must be configured to disable USB mass storage.",
+  "command": "grep -E '^(install usb-storage /bin/false|blacklist usb-storage)' /etc/modprobe.d/blacklist.conf || true",
+  "expected_output": [
+    "install usb-storage /bin/false",
+    "blacklist usb-storage"
+  ],
+  "file": "/etc/modprobe.d/blacklist.conf",
+  "fix": "grep -q '^install usb-storage /bin/false' /etc/modprobe.d/blacklist.conf || echo 'install usb-storage /bin/false' >> /etc/modprobe.d/blacklist.conf; grep -q '^blacklist usb-storage' /etc/modprobe.d/blacklist.conf || echo 'blacklist usb-storage' >> /etc/modprobe.d/blacklist.conf"
+},
+{
+  "id": "MBSS-OS-RHEL-59",
+  "type": "List",
+  "description": "Ensure password failed attempts lockout includes root account",
+  "command": "grep -E '^(even_deny_root|root_unlock_time)' /etc/security/faillock.conf || true",
+  "expected_output": [
+    "even_deny_root",
+    "root_unlock_time = 60"
+  ],
+  "file": "/etc/security/faillock.conf",
+  "fix": "grep -q '^even_deny_root' /etc/security/faillock.conf || echo 'even_deny_root' >> /etc/security/faillock.conf; grep -q '^root_unlock_time' /etc/security/faillock.conf && sed -i 's/^root_unlock_time.*/root_unlock_time = 60/' /etc/security/faillock.conf || echo 'root_unlock_time = 60' >> /etc/security/faillock.conf"
+},
+{
+  "id": "MBSS-OS-RHEL-68",
+  "type": "Generic",
+  "description": "Ensure pam_unix does not include remember",
+  "command": "! grep -P '^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+.*\\bremember=[1-9][0-9]*\\b' /etc/pam.d/{password-auth,system-auth}",
+  "expected_output": "",
+  "fix": "sed -ri 's/(^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+.*)\\bremember=[1-9][0-9]*\\b(\\s*.*)/\\1\\2/' /etc/pam.d/password-auth /etc/pam.d/system-auth"
+},
+{
+  "id": "MBSS-OS-RHEL-67",
+  "type": "Generic",
+  "description": "Ensure pam_unix does not include nullok",
+  "command": "! grep -P '\\bpam_unix\\.so\\b.*\\bnullok\\b' /etc/pam.d/{system-auth,password-auth}",
+  "expected_output": "",
+  "fix": "sed -i -r 's/(pam_unix\\.so.*)\\bnullok\\b(.*)/\\1\\2/' /etc/pam.d/system-auth /etc/pam.d/password-auth"
+},
+{
+  "id": "MBSS-OS-RHEL-66",
+  "type": "List",
+  "description": "Ensure pam_pwhistory includes use_authtok",
+  "command": "grep -P 'password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so.*use_authtok' /etc/pam.d/{system-auth,password-auth} | cut -d: -f2- | sed 's/^ *//'",
+  "expected_output": [
+    "password required pam_pwhistory.so use_authtok"
+  ],
+  "file": "/etc/pam.d/system-auth,/etc/pam.d/password-auth",
+  "fix": "for f in /etc/pam.d/system-auth /etc/pam.d/password-auth; do grep -q 'pam_pwhistory.so' \"$f\" || echo 'password required pam_pwhistory.so use_authtok' >> \"$f\"; done"
+},
+{
+  "id": "MBSS-OS-RHEL-71",
+  "type": "List",
+  "description": "Ensure strong password hashing algorithm is configured",
+  "command": "grep -E '^(crypt_style|ENCRYPT_METHOD)' /etc/libuser.conf /etc/login.defs | tr -s ' '",
+  "expected_output": [
+    "/etc/libuser.conf:crypt_style = sha512",
+    "/etc/login.defs:ENCRYPT_METHOD SHA512"
+  ],
+  "file": "/etc/libuser.conf,/etc/login.defs",
+  "fix": "sed -i '/^crypt_style/d' /etc/libuser.conf; echo 'crypt_style = sha512' >> /etc/libuser.conf; sed -i '/^ENCRYPT_METHOD/d' /etc/login.defs; echo 'ENCRYPT_METHOD SHA512' >> /etc/login.defs"
+},
+{
+  "id": "MBSS-OS-RHEL-75",
+  "type": "List",
+  "description": "Ensure root user umask is configured",
+  "command": "grep -E '^\\s*umask' /root/.bash_profile /root/.bashrc | tr -s ' '",
+  "expected_output": [
+    "/root/.bash_profile:umask 0027",
+    "/root/.bashrc:umask 0027"
+  ],
+  "file": "/root/.bash_profile,/root/.bashrc",
+  "fix": "sed -i '/^umask/d' /root/.bash_profile; echo 'umask 0027' >> /root/.bash_profile; sed -i '/^umask/d' /root/.bashrc; echo 'umask 0027' >> /root/.bashrc"
+},
+{
+  "id": "MBSS-OS-RHEL-79",
+  "type": "List",
+  "description": "Ensure default user shell timeout is configured.",
+  "command": "grep -E 'TMOUT' /etc/bashrc /etc/profile /etc/profile.d/*.sh | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | cut -d: -f2- | tr -s ' '",
+  "expected_output": [
+    "TMOUT=900",
+    "readonly TMOUT",
+    "export TMOUT"
+  ],
+  "file": "/etc/profile.d/timeout.sh",
+  "fix": "echo 'TMOUT=900' >> /etc/profile.d/timeout.sh && echo 'readonly TMOUT' >> /etc/profile.d/timeout.sh && echo 'export TMOUT' >> /etc/profile.d/timeout.sh"
+}
+]
