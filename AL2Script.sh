@@ -1,24 +1,27 @@
 #!/bin/bash
 
+# === Pre-requisite Checks ===
+if ! command -v jq &> /dev/null; then
+    echo "jq not found. Attempting to install jq..."
+    sudo yum install -y jq || echo "⚠️ Warning: Failed to install jq. Continuing anyway."
+fi
+
 # === File paths ===
 jsonFile="automated.json"
-remediationFile="remediations.txt"
 csvFile="compliance_results.csv"
 logFile="compliance_log.txt"
 
 : > "$logFile"
-echo "ID,Description,Post Fix Compliance" > "$csvFile"
+echo "ID,Description,Compliance" > "$csvFile"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$logFile"
 }
 
 [[ ! -f "$jsonFile" ]] && echo "Missing $jsonFile" && exit 1
-[[ ! -f "$remediationFile" ]] && echo "Missing $remediationFile" && exit 1
 
-mapfile -t remediationIDs < "$remediationFile"
-ids_json=$(printf '%s\n' "${remediationIDs[@]}" | jq -R . | jq -s .)
-controls=$(jq --argjson ids "$ids_json" '[.[] | select(.id as $id | $ids | index($id))]' "$jsonFile")
+# === Fetch all controls from automated.json ===
+controls=$(jq -c '.[]' "$jsonFile")
 
 # === Compliance Check Functions ===
 
@@ -35,6 +38,7 @@ handle_generic() {
         [[ "$pre_out" == "$expected" ]] && return 0 || return 1
     fi
 }
+
 handle_either_or() {
     IFS='||' read -ra options <<< "$(jq -r '.' <<< "$expected")"
     for val in "${options[@]}"; do
@@ -48,26 +52,13 @@ handle_list() {
     pre_lines=()
     while IFS= read -r line; do pre_lines+=("$(normalize_line "$line")"); done <<< "$pre_out"
 
-    missing=()
     for item in "${expected_arr[@]}"; do
         norm_item=$(normalize_line "$item")
         found=false
         for line in "${pre_lines[@]}"; do [[ "$line" == "$norm_item" ]] && found=true && break; done
-        $found || missing+=("$item")
+        $found || return 1
     done
-
-    if [ "${#missing[@]}" -eq 0 ]; then return 0; fi
-
-    if [[ -n "$file" ]]; then
-        for m in "${missing[@]}"; do
-            if ! grep -qF -- "$m" "$file" 2>/dev/null; then
-                echo "$m" | sudo tee -a "$file" > /dev/null
-                log "Appended missing item to $file: $m"
-            fi
-        done
-    fi
-
-    return 1
+    return 0
 }
 
 handle_filecheck() {
@@ -92,51 +83,33 @@ jq -c '.[]' <<< "$controls" | while read -r control; do
     desc=$(jq -r '.description' <<< "$control")
     cmd=$(jq -r '.command' <<< "$control")
     expected=$(jq -r '.expected_output' <<< "$control")
-    fix=$(jq -r '.fix' <<< "$control")
     type=$(jq -r '.type' <<< "$control")
 
-    # Suppress command output on screen
-    echo "$id - Remediating..."
+    echo "$id - Checking..."
 
     pre_out=$(bash -c "$cmd" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
-    log "BEFORE FIX: $id - $desc"
+    log "CHECKING: $id - $desc"
     log "Expected: $expected"
     log "Found: $pre_out"
 
     result="FAIL"
-    check_status=1
 
     case "$type" in
         "Generic") handle_generic && result="PASS" ;;
-        "List") handle_list; check_status=$?; [[ "$check_status" == 0 ]] && result="PASS" ;;
+        "List") handle_list && result="PASS" ;;
         "Either | OR") handle_either_or && result="PASS" ;;
         "FileCheck") handle_filecheck && result="PASS" ;;
         *) log "Unknown type '$type' for $id" ;;
     esac
 
-    if [[ "$result" == "FAIL" && "$check_status" -ne 2 ]]; then
-        log "Applying fix for $id"
-        eval "$fix" 2>/dev/null
-        log "Fix applied"
-
-        sleep 2
-        pre_out=$(eval "$cmd" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
-        case "$type" in
-            "Generic") handle_generic && result="PASS" ;;
-            "List") handle_list; [[ $? == 0 ]] && result="PASS" ;;
-            "Either | OR") handle_either_or && result="PASS" ;;
-            "FileCheck") handle_filecheck && result="PASS" ;;
-        esac
-        log "AFTER FIX: $id - Compliance: $result"
-    elif [[ -z "$pre_out" ]]; then
-        log "FILE MISSING: $id - Command output is empty"
-    else
-        log "ALREADY COMPLIANT: $id - No action needed"
+    if [[ -z "$pre_out" ]]; then
+        log "COMMAND OUTPUT EMPTY: $id - Cannot determine compliance"
     fi
 
+    log "FINAL RESULT: $id - Compliance: $result"
     echo "$id,\"$desc\",$result" >> "$csvFile"
 done
 
-echo "✅ Remediation complete. Output:"
+echo "✅ Compliance check complete. Output:"
 echo " - CSV: $csvFile"
 echo " - Log: $logFile"
