@@ -1,27 +1,26 @@
 #!/bin/bash
 
-# === Pre-requisite Checks ===
-if ! command -v jq &> /dev/null; then
-    echo "jq not found. Attempting to install jq..."
-    sudo yum install -y jq || echo "⚠️ Warning: Failed to install jq. Continuing anyway."
-fi
-
 # === File paths ===
 jsonFile="automated.json"
 csvFile="compliance_results.csv"
 logFile="compliance_log.txt"
 
+# === Pre-requisite Check and Install jq if missing ===
+if ! command -v jq &> /dev/null; then
+    echo "jq not found. Installing jq..."
+    sudo yum install -y jq || { echo "Failed to install jq. Exiting."; exit 1; }
+fi
+
+# === Prepare output files ===
 : > "$logFile"
-echo "ID,Description,Compliance" > "$csvFile"
+echo "ID,Description,Post Check Compliance" > "$csvFile"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$logFile"
 }
 
+# === Sanity Check ===
 [[ ! -f "$jsonFile" ]] && echo "Missing $jsonFile" && exit 1
-
-# === Fetch all controls from automated.json ===
-controls=$(jq -c '.[]' "$jsonFile")
 
 # === Compliance Check Functions ===
 
@@ -52,13 +51,16 @@ handle_list() {
     pre_lines=()
     while IFS= read -r line; do pre_lines+=("$(normalize_line "$line")"); done <<< "$pre_out"
 
+    missing=()
     for item in "${expected_arr[@]}"; do
         norm_item=$(normalize_line "$item")
         found=false
         for line in "${pre_lines[@]}"; do [[ "$line" == "$norm_item" ]] && found=true && break; done
-        $found || return 1
+        $found || missing+=("$item")
     done
-    return 0
+
+    if [ "${#missing[@]}" -eq 0 ]; then return 0; fi
+    return 1
 }
 
 handle_filecheck() {
@@ -76,9 +78,9 @@ handle_filecheck() {
     return 0
 }
 
-# === Main Processing Loop ===
+# === Main Checking Loop ===
 
-jq -c '.[]' <<< "$controls" | while read -r control; do
+jq -c '.[]' "$jsonFile" | while read -r control; do
     id=$(jq -r '.id' <<< "$control")
     desc=$(jq -r '.description' <<< "$control")
     cmd=$(jq -r '.command' <<< "$control")
@@ -88,12 +90,12 @@ jq -c '.[]' <<< "$controls" | while read -r control; do
     echo "$id - Checking..."
 
     pre_out=$(bash -c "$cmd" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
+
     log "CHECKING: $id - $desc"
     log "Expected: $expected"
     log "Found: $pre_out"
 
     result="FAIL"
-
     case "$type" in
         "Generic") handle_generic && result="PASS" ;;
         "List") handle_list && result="PASS" ;;
@@ -106,10 +108,11 @@ jq -c '.[]' <<< "$controls" | while read -r control; do
         log "COMMAND OUTPUT EMPTY: $id - Cannot determine compliance"
     fi
 
-    log "FINAL RESULT: $id - Compliance: $result"
     echo "$id,\"$desc\",$result" >> "$csvFile"
+    log "FINAL RESULT: $id - Compliance: $result"
+
 done
 
-echo "✅ Compliance check complete. Output:"
-echo " - CSV: $csvFile"
-echo " - Log: $logFile"
+echo "✅ Compliance Checking Complete."
+echo " - CSV Report: $csvFile"
+echo " - Log File: $logFile"
