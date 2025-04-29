@@ -667,7 +667,7 @@
   {
     "id": "MBSS-OS-145",
     "type": "Generic",
-    "description": "RHEL 8 system commands must have mode 755 or less permissive.",
+    "description": "Amazon Linux 2 system commands must have mode 755 or less permissive.",
     "command": "find /bin /usr/bin /sbin /usr/sbin -type f -perm /022 -exec stat -c '%n %a' {} +",
     "expected_output": "",
     "fix": "find /bin /usr/bin /sbin /usr/sbin -type f -perm /022 -exec chmod 755 {} +"
@@ -675,7 +675,7 @@
   {
     "id": "MBSS-OS-147",
     "type": "Generic",
-    "description": "RHEL 8 must have the USBGuard installed.",
+    "description": "Amazon Linux 2 must have the USBGuard installed.",
     "command": "rpm -q usbguard",
     "expected_output": "usbguard-*",
     "fix": "yum install -y usbguard.x86_64"
@@ -683,7 +683,7 @@
   {
     "id": "MBSS-OS-149",
     "type": "Generic",
-    "description": "RHEL 8 must display the date and time of the last successful account logon upon an SSH logon.",
+    "description": "Amazon Linux 2 must display the date and time of the last successful account logon upon an SSH logon.",
     "command": "grep -E '^\\s*PrintLastLog\\s+yes' /etc/ssh/sshd_config",
     "expected_output": "PrintLastLog yes",
     "fix": "sed -i 's/^#*PrintLastLog.*/PrintLastLog yes/' /etc/ssh/sshd_config && systemctl restart sshd"
@@ -691,7 +691,7 @@
   {
     "id": "MBSS-OS-150",
     "type": "Generic",
-    "description": "RHEL 8 network interfaces must not be in promiscuous mode.",
+    "description": "Amazon Linux 2 network interfaces must not be in promiscuous mode.",
     "command": "ip link | grep 'PROMISC'",
     "expected_output": "",
     "fix": "for iface in $(ip -o link show | awk -F': ' '{print $2}'); do ip link set dev $iface promisc off; done"
@@ -857,7 +857,7 @@
 {
   "id": "MBSS-OS-143",
   "type": "List",
-  "description": "RHEL 8 must automatically lock an account when three unsuccessful logon attempts occur during a 15-minute time period.",
+  "description": "Amazon Linux 2 must automatically lock an account when three unsuccessful logon attempts occur during a 15-minute time period.",
   "command": "grep -h pam_faillock /etc/pam.d/system-auth /etc/pam.d/password-auth",
   "expected_output": [
     "auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0",
@@ -870,7 +870,7 @@
 {
   "id": "MBSS-OS-144",
   "type": "List",
-  "description": "RHEL 8 must automatically lock an account until the locked account is released by an administrator when three unsuccessful logon attempts occur during a 15-minute time period.",
+  "description": "Amazon Linux 2 must automatically lock an account until the locked account is released by an administrator when three unsuccessful logon attempts occur during a 15-minute time period.",
   "command": "grep -h pam_faillock /etc/pam.d/system-auth /etc/pam.d/password-auth",
   "expected_output": [
     "auth required pam_faillock.so preauth dir=/var/log/faillock silent audit deny=3 even_deny_root fail_interval=900 unlock_time=0",
@@ -883,7 +883,7 @@
 {
   "id": "MBSS-OS-146",
   "type": "List",
-  "description": "The RHEL 8 fapolicy module must be configured to employ a deny-all, permit-by-exception policy to allow the execution of authorized software programs.",
+  "description": "The Amazon Linux 2 fapolicy module must be configured to employ a deny-all, permit-by-exception policy to allow the execution of authorized software programs.",
   "command": "grep 'permissive' /etc/fapolicyd/fapolicyd.conf; tail -n 1 /etc/fapolicyd/fapolicyd.rules /etc/fapolicyd/rules.d/* 2>/dev/null",
   "expected_output": [
     "permissive = 0",
@@ -895,7 +895,7 @@
 {
   "id": "MBSS-OS-148",
   "type": "List",
-  "description": "RHEL 8 must define default permissions for logon and non-logon shells.",
+  "description": "Amazon Linux 2 must define default permissions for logon and non-logon shells.",
   "command": "grep -H -E '^\\s*umask\\s+077' /etc/bashrc /etc/csh.cshrc /etc/profile",
   "expected_output": [
     "umask 077"
@@ -906,7 +906,7 @@
 {
   "id": "MBSS-OS-151",
   "type": "FileCheck",
-  "description": "The RHEL 8 SSH public host key files must have mode 0644 or less permissive.",
+  "description": "The Amazon Linux 2 SSH public host key files must have mode 0644 or less permissive.",
   "command": "stat -c \"%n: %a\" /etc/ssh/*key.pub",
   "expected_output": [
     "/etc/ssh/ssh_host_ecdsa_key.pub: 644",
@@ -918,7 +918,7 @@
 {
   "id": "MBSS-OS-152",
   "type": "List",
-  "description": "RHEL 8 must be configured to disable USB mass storage.",
+  "description": "Amazon Linux 2 must be configured to disable USB mass storage.",
   "command": "grep -E '^(install usb-storage /bin/false|blacklist usb-storage)' /etc/modprobe.d/blacklist.conf || true",
   "expected_output": [
     "install usb-storage /bin/false",
